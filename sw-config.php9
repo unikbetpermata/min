@@ -1,0 +1,33 @@
+<?php
+/**
+ * sw-config.php - versi minimal untuk s-widodo.com
+ * Digunakan untuk koneksi database di index.php
+ */
+
+// ------------------ Database ------------------
+define("DB_HOST", "localhost");            // Host database, biasanya 'localhost'
+define("DB_USER", "fasttrav_swidodocom"); // User database, sesuai cPanel
+define("DB_PASSWD", "PASSWORD_USER");      // Ganti dengan password user
+define("DB_NAME", "DATABASE_UTAMA");       // Ganti dengan nama database yang punya tabel 'theme'
+
+// ------------------ Debug ------------------
+define("DEBUG_MODE", true);  // true untuk testing, false di production
+
+// ------------------ Koneksi ------------------
+$connection = new mysqli(DB_HOST, DB_USER, DB_PASSWD, DB_NAME);
+
+// Cek koneksi
+if ($connection->connect_error) {
+    die("❌ Gagal koneksi ke database: " . $connection->connect_error);
+}
+
+// Optional: debug info (hilangkan saat production)
+if (DEBUG_MODE) {
+    echo "<pre>";
+    echo "sw-config.php loaded\n";
+    echo "Database: " . DB_NAME . "\n";
+    echo "Host: " . DB_HOST . "\n";
+    echo "User: " . DB_USER . "\n";
+    echo "</pre>";
+}
+?>
